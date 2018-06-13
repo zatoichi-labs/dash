@@ -6,6 +6,8 @@ import importlib
 import json
 import pkgutil
 import warnings
+import logging
+
 from functools import wraps
 
 import plotly
@@ -565,4 +567,7 @@ class Dash(object):
                    port=8050,
                    debug=False,
                    **flask_run_options):
+        if not debug:
+            # silence the route logging info.
+            logging.getLogger('werkzeug').setLevel(logging.ERROR)
         self.server.run(port=port, debug=debug, **flask_run_options)
