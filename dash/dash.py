@@ -566,8 +566,9 @@ class Dash(object):
     def run_server(self,
                    port=8050,
                    debug=False,
+                   dev_mode=False,
                    **flask_run_options):
-        if not debug:
+        if not dev_mode:
             # silence the route logging info.
             logging.getLogger('werkzeug').setLevel(logging.ERROR)
         self.server.run(port=port, debug=debug, **flask_run_options)
