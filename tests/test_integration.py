@@ -164,6 +164,7 @@ class Tests(IntegrationTests):
         output1 = self.wait_for_element_by_id('output1')
         output2 = self.wait_for_element_by_id('output2')
 
+
         # callback1 runs twice (initial page load and through send_keys)
         self.assertEqual(callback1_count.value, 2)
 
