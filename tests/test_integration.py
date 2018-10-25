@@ -11,7 +11,7 @@ import dash_dangerously_set_inner_html
 import dash
 import time
 
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
 from .IntegrationTests import IntegrationTests
 from .utils import assert_clean_console, invincible, wait_for
@@ -61,8 +61,7 @@ class Tests(IntegrationTests):
 
         input1.send_keys('hello world')
 
-        output1 = lambda: self.wait_for_element_by_id('output-1')
-        wait_for(lambda: output1().text == 'hello world')
+        output1 = self.wait_for_text_to_equal('#output-1', 'hello world')
         self.percy_snapshot(name='simple-callback-2')
 
         self.assertEqual(
@@ -106,8 +105,7 @@ class Tests(IntegrationTests):
             return data
 
         self.startServer(app)
-        output1 = self.wait_for_element_by_id('output-1')
-        wait_for(lambda: output1.text == 'initial value')
+        output1 = self.wait_for_text_to_equal('#output-1', 'initial value')
         self.percy_snapshot(name='wildcard-callback-1')
 
         input1 = self.wait_for_element_by_id('input')
@@ -115,8 +113,7 @@ class Tests(IntegrationTests):
 
         input1.send_keys('hello world')
 
-        output1 = lambda: self.wait_for_element_by_id('output-1')
-        wait_for(lambda: output1().text == 'hello world')
+        output1 = self.wait_for_text_to_equal('#output-1', 'hello world')
         self.percy_snapshot(name='wildcard-callback-2')
 
         self.assertEqual(
@@ -534,3 +531,42 @@ class Tests(IntegrationTests):
 
         self.startServer(app)
         time.sleep(0.5)
+
+    def test_multi_output(self):
+        app = dash.Dash(__name__)
+        app.scripts.config.serve_locally = True
+
+        app.layout = html.Div([
+            html.Button('OUTPUT', id='output-btn'),
+
+            html.Table([
+                html.Thead([
+                    html.Tr([
+                        html.Th('Output 1'),
+                        html.Th('Output 2')
+                    ])
+                ]),
+                html.Tbody([
+                    html.Tr([html.Td(id='output1'), html.Td(id='output2')]),
+                ])
+            ]),
+        ])
+
+        @app.callback([Output('output1', 'children'), Output('output2', 'children')],
+                      [Input('output-btn', 'n_clicks')],
+                      [State('output-btn', 'n_clicks_timestamp')])
+        def on_click(n_clicks, n_clicks_timestamp):
+            if n_clicks is None:
+                raise PreventUpdate
+
+            return n_clicks, n_clicks_timestamp
+
+
+        t = time.time()
+
+        btn = self.wait_for_element_by_id('output-btn')
+        btn.click()
+        time.sleep(1)
+
+        self.wait_for_text_to_equals()
+
