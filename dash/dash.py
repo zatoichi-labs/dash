@@ -295,6 +295,7 @@ class Dash(object):
 
     def _config(self):
         return {
+            'multi_output': True,
             'url_base_pathname': self.url_base_pathname,
             'requests_pathname_prefix': self.config['requests_pathname_prefix']
         }
@@ -887,7 +888,9 @@ class Dash(object):
                 else:
                     response = {
                         'response': {
-                            output.component_property: output_value
+                            'props': {
+                                output.component_property: output_value
+                            }
                         }
                     }
 
