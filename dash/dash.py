@@ -12,6 +12,7 @@ import threading
 import warnings
 import re
 import logging
+import mimetypes
 
 from functools import wraps
 
@@ -66,6 +67,9 @@ _re_index_scripts = re.compile(r'{%scripts%}')
 _re_index_entry_id = re.compile(r'id="react-entry-point"')
 _re_index_config_id = re.compile(r'id="_dash-config"')
 _re_index_scripts_id = re.compile(r'src=".*dash[-_]renderer.*"')
+
+mimetypes.add_type('application/javascript', '.js')
+mimetypes.add_type('application/json', '.map')
 
 
 # pylint: disable=too-many-instance-attributes
@@ -490,10 +494,9 @@ class Dash(object):
                 )
             )
 
-        mimetype = ({
-            'js': 'application/JavaScript',
-            'css': 'text/css'
-        })[path_in_package_dist.split('.')[-1]]
+        mimetype, _ = mimetypes.guess_type(path_in_package_dist)
+        if mimetype is None:
+            return 'Invalid file', 400
 
         headers = {
             'Cache-Control': 'public, max-age={}'.format(
