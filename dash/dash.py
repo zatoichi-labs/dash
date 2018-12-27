@@ -390,7 +390,7 @@ class Dash(object):
                             relative_package_path=rel_path,
                             namespace=resource['namespace']
                         ))
-            elif 'external_url' in resource:
+            elif 'external_url' in resource and not is_dynamic_resource:
                 if isinstance(resource['external_url'], str):
                     srcs.append(resource['external_url'])
                 else:
