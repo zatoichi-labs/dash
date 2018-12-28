@@ -62,7 +62,7 @@ class IntegrationTests(unittest.TestCase):
 
     def startServer(s, dash):
         def run():
-            dash.scripts.config.serve_locally = True
+            dash.resource_manager.set_serve_scripts_locally(True)
             dash.run_server(
                 port=8050,
                 debug=False,

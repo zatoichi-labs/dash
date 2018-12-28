@@ -22,8 +22,7 @@ from flask import Flask, Response
 from flask_compress import Compress
 
 from .dependencies import Event, Input, Output, State
-from .resources import Scripts, Css
-from .development.base_component import Component
+from .development.base_component import Component, ComponentRegistry
 from . import exceptions
 from ._utils import AttributeDict as _AttributeDict
 from ._utils import interpolate_str as _interpolate
@@ -32,6 +31,7 @@ from ._utils import generate_hash as _generate_hash
 from . import _watch
 from ._utils import get_asset_path as _get_asset_path
 from . import _configs
+from .resource_manager import ResourceManager
 
 
 _default_index = '''<!DOCTYPE html>
@@ -164,16 +164,24 @@ class Dash(object):
             print(error, file=sys.stderr)
             return ('', 204)
 
-        # static files from the packages
-        self.css = Css()
-        self.scripts = Scripts()
-
-        self._external_scripts = external_scripts or []
-        self._external_stylesheets = external_stylesheets or []
-
+        # the resource manager
+        self.resource_manager = ResourceManager(
+            scripts=external_scripts or [],
+            stylesheets=external_stylesheets or []
+        )
+        self.resource_manager.register_resources(
+            resources=dash_renderer._js_dist_dependencies + \
+                      dash_renderer._js_dist + \
+                      ComponentRegistry.get_resources('_js_dist'),
+            resource_type='js',
+            resource_form='dependency'
+        )
+        self.resource_manager.register_resources(
+            resources=ComponentRegistry.get_resources('_css_dist'),
+            resource_type='css',
+            resource_form='dependency'
+        )
         self.assets_ignore = assets_ignore
-
-        self.registered_paths = collections.defaultdict(set)
 
         # urls
         self.routes = []
@@ -284,9 +292,6 @@ class Dash(object):
         self._layout = value
 
         layout_value = self._layout_value()
-        # pylint: disable=protected-access
-        self.css._update_layout(layout_value)
-        self.scripts._update_layout(layout_value)
 
     @property
     def index_string(self):
@@ -341,7 +346,7 @@ class Dash(object):
         return flask.jsonify({
             'reloadHash': self._reload_hash,
             'hard': hard,
-            'packages': list(self.registered_paths.keys()),
+            'packages': self.resource_manager.get_registered_namespaces(),
             'files': list(changed)
         })
 
@@ -351,99 +356,6 @@ class Dash(object):
                        cls=plotly.utils.PlotlyJSONEncoder),
             mimetype='application/json'
         )
-
-    def _collect_and_register_resources(self, resources):
-        # now needs the app context.
-        # template in the necessary component suite JS bundles
-        # add the version number of the package as a query parameter
-        # for cache busting
-        def _relative_url_path(relative_package_path='', namespace=''):
-
-            module_path = os.path.join(
-                os.path.dirname(sys.modules[namespace].__file__),
-                relative_package_path)
-
-            modified = int(os.stat(module_path).st_mtime)
-
-            return '{}_dash-component-suites/{}/{}?v={}&m={}'.format(
-                self.config['requests_pathname_prefix'],
-                namespace,
-                relative_package_path,
-                importlib.import_module(namespace).__version__,
-                modified
-            )
-
-        srcs = []
-        for resource in resources:
-            is_dynamic_resource = resource.get('dynamic', False)
-
-            if 'relative_package_path' in resource:
-                paths = resource['relative_package_path']
-                paths = [paths] if isinstance(paths, str) else paths
-
-                for rel_path in paths:
-                    self.registered_paths[resource['namespace']]\
-                        .add(rel_path)
-
-                    if not is_dynamic_resource:
-                        srcs.append(_relative_url_path(
-                            relative_package_path=rel_path,
-                            namespace=resource['namespace']
-                        ))
-            elif 'external_url' in resource:
-                if isinstance(resource['external_url'], str):
-                    srcs.append(resource['external_url'])
-                else:
-                    for url in resource['external_url']:
-                        srcs.append(url)
-            elif 'absolute_path' in resource:
-                raise Exception(
-                    'Serving files from absolute_path isn\'t supported yet'
-                )
-            elif 'asset_path' in resource:
-                static_url = self.get_asset_url(resource['asset_path'])
-                # Add a bust query param
-                static_url += '?m={}'.format(resource['ts'])
-                srcs.append(static_url)
-        return srcs
-
-    def _generate_css_dist_html(self):
-        links = self._external_stylesheets + \
-            self._collect_and_register_resources(self.css.get_all_css())
-
-        return '\n'.join([
-            _format_tag('link', link, opened=True)
-            if isinstance(link, dict)
-            else '<link rel="stylesheet" href="{}">'.format(link)
-            for link in links
-        ])
-
-    def _generate_scripts_html(self):
-        # Dash renderer has dependencies like React which need to be rendered
-        # before every other script. However, the dash renderer bundle
-        # itself needs to be rendered after all of the component's
-        # scripts have rendered.
-        # The rest of the scripts can just be loaded after React but before
-        # dash renderer.
-        # pylint: disable=protected-access
-        srcs = self._collect_and_register_resources(
-            self.scripts._resources._filter_resources(
-                dash_renderer._js_dist_dependencies,
-                dev_bundles=self._dev_tools.serve_dev_bundles
-            )) + self._external_scripts + self._collect_and_register_resources(
-                self.scripts.get_all_scripts(
-                    dev_bundles=self._dev_tools.serve_dev_bundles) +
-                self.scripts._resources._filter_resources(
-                    dash_renderer._js_dist,
-                    dev_bundles=self._dev_tools.serve_dev_bundles
-                ))
-
-        return '\n'.join([
-            _format_tag('script', src)
-            if isinstance(src, dict)
-            else '<script src="{}"></script>'.format(src)
-            for src in srcs
-        ])
 
     def _generate_config_html(self):
         return (
@@ -474,14 +386,16 @@ class Dash(object):
 
     # Serve the JS bundles for each package
     def serve_component_suites(self, package_name, path_in_package_dist):
-        if package_name not in self.registered_paths:
+        registered_namespaces = self.resource_manager.get_registered_namespaces()
+        registered_paths = self.resource_manager.get_registered_paths(package_name)
+        if package_name not in registered_namespaces:
             raise exceptions.DependencyException(
                 'Error loading dependency.\n'
                 '"{}" is not a registered library.\n'
                 'Registered libraries are: {}'
-                .format(package_name, list(self.registered_paths.keys())))
-
-        elif path_in_package_dist not in self.registered_paths[package_name]:
+                .format(package_name, registered_namespaces)
+            )
+        elif path_in_package_dist not in registered_paths:
             raise exceptions.DependencyException(
                 '"{}" is registered but the path requested is not valid.\n'
                 'The path requested: "{}"\n'
@@ -489,7 +403,7 @@ class Dash(object):
                 .format(
                     package_name,
                     path_in_package_dist,
-                    self.registered_paths
+                    registered_paths
                 )
             )
 
@@ -511,8 +425,8 @@ class Dash(object):
         )
 
     def index(self, *args, **kwargs):  # pylint: disable=unused-argument
-        scripts = self._generate_scripts_html()
-        css = self._generate_css_dist_html()
+        scripts = self.resource_manager.generate_scripts()
+        css = self.resource_manager.generate_links()
         config = self._generate_config_html()
         metas = self._generate_meta_html()
         title = getattr(self, 'title', 'Dash')
@@ -993,14 +907,17 @@ class Dash(object):
 
         self._validate_layout()
 
-        self._generate_scripts_html()
-        self._generate_css_dist_html()
-
     def _add_assets_resource(self, url_path, file_path):
-        res = {'asset_path': url_path, 'filepath': file_path}
+        res = {
+            'src': os.path.join(
+                self._assets_url_path,
+                url_path
+            )
+        }
         if self.config.assets_external_path:
-            res['external_url'] = '{}{}'.format(
-                self.config.assets_external_path, url_path)
+            res['src'] = '{}{}'.format(
+                self.config.assets_external_path, url_path
+            )
         self._assets_files.append(file_path)
         return res
 
@@ -1031,12 +948,13 @@ class Dash(object):
                     path = f
 
                 full = os.path.join(current, f)
-
-                if f.endswith('js'):
-                    self.scripts.append_script(
-                        self._add_assets_resource(path, full))
-                elif f.endswith('css'):
-                    self.css.append_css(self._add_assets_resource(path, full))
+                ext = os.path.splitext(f)[1]
+                if ext in ['js', 'css']:
+                    self.resource_manager.register_resource(
+                        self._add_assets_resource(path, full),
+                        resource_type=ext,
+                        resource_form='raw'
+                    )
                 elif f == 'favicon.ico':
                     self._favicon = path
 
@@ -1173,7 +1091,7 @@ class Dash(object):
 
         if debug and self._dev_tools.serve_dev_bundles:
             # Dev bundles only works locally.
-            self.scripts.config.serve_locally = True
+            self.resource_manager.set_serve_scripts_locally(True)
 
         return debug
 
@@ -1196,9 +1114,17 @@ class Dash(object):
         if filename not in self._assets_files and not deleted:
             res = self._add_assets_resource(asset_path, filename)
             if filename.endswith('js'):
-                self.scripts.append_script(res)
+                self.resource_manager.register_resource(
+                    resource=res,
+                    resource_type='js',
+                    resource_form='dependency'
+                )
             elif filename.endswith('css'):
-                self.css.append_css(res)
+                self.resource_manager.register_resource(
+                    resource=res,
+                    resource_type='js',
+                    resource_form='dependency'
+                )
 
         if deleted:
             if filename in self._assets_files:
@@ -1215,10 +1141,12 @@ class Dash(object):
 
             if filename.endswith('js'):
                 # pylint: disable=protected-access
-                delete_resource(self.scripts._resources._resources)
+                # delete_resource(self.scripts._resources._resources)
+                assert 1 == 0
             elif filename.endswith('css'):
                 # pylint: disable=protected-access
-                delete_resource(self.css._resources._resources)
+                # delete_resource(self.css._resources._resources)
+                assert 1 == 0
 
         self._lock.release()
 
