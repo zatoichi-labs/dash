@@ -73,6 +73,15 @@ jobs:
           PYLINTRC: .pylintrc37
           PERCY_ENABLE: 0
 
+  "git-master":
+    <<: *test-template
+    docker:
+      - image: circleci/python:3.7-stretch-browsers
+        environment:
+          REQUIREMENTS_FILE: .circleci/requirements/git-requirements.txt
+          PYLINTRC: .pylintrc37
+          PERCY_ENABLE: 0
+
 
 workflows:
   version: 2
@@ -81,3 +90,4 @@ workflows:
       - "python-2.7"
       - "python-3.6"
       - "python-3.7"
+      - "git-master"
