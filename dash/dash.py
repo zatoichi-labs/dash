@@ -1255,7 +1255,8 @@ class Dash(object):
                          dev_tools_hot_reload_interval=None,
                          dev_tools_hot_reload_watch_interval=None,
                          dev_tools_hot_reload_max_retry=None,
-                         dev_tools_silence_routes_logging=None):
+                         dev_tools_silence_routes_logging=None,
+                         dev_tools_ui=None):
         """
         Activate the dev tools, called by `run_server`. If your application is
         served by wsgi and you want to activate the dev tools, you can call
@@ -1306,7 +1307,11 @@ class Dash(object):
         debug = debug or _configs.get_config('debug', None, env, debug,
                                              is_bool=True)
 
-        self._dev_tools.dev_tools_ui = debug
+        self._dev_tools['dev_tools_ui'] = _configs.get_config(
+            'ui', dev_tools_ui, env,
+            default=debug,
+            is_bool=True
+        )
 
         self._dev_tools['serve_dev_bundles'] = _configs.get_config(
             'serve_dev_bundles', dev_tools_serve_dev_bundles, env,
@@ -1431,6 +1436,7 @@ class Dash(object):
                    dev_tools_hot_reload_watch_interval=None,
                    dev_tools_hot_reload_max_retry=None,
                    dev_tools_silence_routes_logging=None,
+                   dev_tools_ui=None,
                    **flask_run_options):
         """
         Start the flask server in local mode, you should not run this on a
@@ -1464,6 +1470,7 @@ class Dash(object):
             dev_tools_hot_reload_watch_interval,
             dev_tools_hot_reload_max_retry,
             dev_tools_silence_routes_logging,
+            dev_tools_ui,
         )
 
         if self._dev_tools.silence_routes_logging:
