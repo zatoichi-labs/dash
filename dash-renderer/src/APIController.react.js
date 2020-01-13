@@ -2,7 +2,7 @@ import {connect} from 'react-redux';
 import {includes, isEmpty, isNil} from 'ramda';
 import React, {Component} from 'react';
 import PropTypes from 'prop-types';
-import TreeContainer from './TreeContainer';
+import TreeContainer, { getLoadingState } from './TreeContainer';
 import GlobalErrorContainer from './components/error/GlobalErrorContainer.react';
 import {
     computeGraphs,
@@ -98,8 +98,10 @@ class UnconnectedContainer extends Component {
         const {
             appLifecycle,
             dependenciesRequest,
+            dispatch,
             layoutRequest,
             layout,
+            requestQueue,
             config,
         } = this.props;
 
@@ -131,12 +133,18 @@ class UnconnectedContainer extends Component {
                 </GlobalErrorContainer>
             );
         } else if (appLifecycle === getAppState('HYDRATED')) {
-            return (
-                <TreeContainer
+            return (<TreeContainer
                     _dashprivate_layout={layout}
                     _dashprivate_path={[]}
-                />
-            );
+                _dashprivate_dependencies={dependenciesRequest.content}
+                _dashprivate_dispatch={dispatch}
+                _dashprivate_loadingState={getLoadingState(
+                    layout,
+                    requestQueue
+                )}
+                _dashprivate_requestQueue={requestQueue}
+                _dashprivate_config={config}
+            />);
         }
 
         return <div className="_dash-loading">Loading...</div>;
@@ -155,6 +163,7 @@ UnconnectedContainer.propTypes = {
     history: PropTypes.any,
     error: PropTypes.object,
     config: PropTypes.object,
+    requestQueue: PropTypes.object
 };
 
 const Container = connect(
@@ -166,6 +175,7 @@ const Container = connect(
         layout: state.layout,
         graphs: state.graphs,
         paths: state.paths,
+        requestQueue: state.requestQueue,
         history: state.history,
         error: state.error,
         config: state.config,

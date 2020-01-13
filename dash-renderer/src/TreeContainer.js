@@ -2,7 +2,6 @@ import React, {Component} from 'react';
 import PropTypes from 'prop-types';
 import Registry from './registry';
 import {propTypeErrorHandler} from './exceptions';
-import {connect} from 'react-redux';
 import {
     addIndex,
     any,
@@ -54,14 +53,29 @@ function validateComponent(componentDefinition) {
     }
 }
 
-const createContainer = (component, path) =>
-    isSimpleComponent(component) ? (
-        component
+const createContainer = (
+    _dashprivate_layout,
+    _dashprivate_path,
+    _dashprivate_dependencies,
+    _dashprivate_dispatch,
+    _dashprivate_requestQueue,
+    _dashprivate_config
+) =>
+    isSimpleComponent(_dashprivate_layout) ? (
+        _dashprivate_layout
     ) : (
-        <AugmentedTreeContainer
-            key={component && component.props && component.props.id}
-            _dashprivate_layout={component}
-            _dashprivate_path={path}
+        <TreeContainer
+                key={_dashprivate_layout && _dashprivate_layout.props && _dashprivate_layout.props.id}
+                _dashprivate_layout={_dashprivate_layout}
+                _dashprivate_path={_dashprivate_path}
+                _dashprivate_dependencies={_dashprivate_dependencies}
+                _dashprivate_dispatch={_dashprivate_dispatch}
+                _dashprivate_loadingState={getLoadingState(
+                    _dashprivate_layout,
+                    _dashprivate_requestQueue
+                )}
+                _dashprivate_requestQueue={_dashprivate_requestQueue}
+                _dashprivate_config={_dashprivate_config}
         />
     );
 
@@ -148,21 +162,39 @@ class TreeContainer extends Component {
         }
     }
 
-    getChildren(components, path) {
-        if (isNil(components)) {
+    getChildren(
+        _dashprivate_layout,
+        _dashprivate_path,
+        _dashprivate_dependencies,
+        _dashprivate_dispatch,
+        _dashprivate_requestQueue,
+        _dashprivate_config
+    ) {
+        if (isNil(_dashprivate_layout)) {
             return null;
         }
 
-        return Array.isArray(components)
+        return Array.isArray(_dashprivate_layout)
             ? addIndex(map)(
                   (component, i) =>
                       createContainer(
                           component,
-                          concat(path, ['props', 'children', i])
+                          concat(_dashprivate_path, ['props', 'children', i]),
+                          _dashprivate_dependencies,
+                          _dashprivate_dispatch,
+                          _dashprivate_requestQueue,
+                          _dashprivate_config
                       ),
-                  components
+                _dashprivate_layout
               )
-            : createContainer(components, concat(path, ['props', 'children']));
+            : createContainer(
+                _dashprivate_layout,
+                concat(_dashprivate_path, ['props', 'children']),
+                _dashprivate_dependencies,
+                _dashprivate_dispatch,
+                _dashprivate_requestQueue,
+                _dashprivate_config
+            );
     }
 
     getComponent(_dashprivate_layout, children, loading_state, setProps) {
@@ -228,13 +260,21 @@ class TreeContainer extends Component {
             _dashprivate_layout,
             _dashprivate_loadingState,
             _dashprivate_path,
+            _dashprivate_dependencies,
+            _dashprivate_dispatch,
+            _dashprivate_requestQueue,
+            _dashprivate_config
         } = this.props;
 
         const layoutProps = this.getLayoutProps();
 
         const children = this.getChildren(
             layoutProps.children,
-            _dashprivate_path
+            _dashprivate_path,
+            _dashprivate_dependencies,
+            _dashprivate_dispatch,
+            _dashprivate_requestQueue,
+            _dashprivate_config
         );
 
         return this.getComponent(
@@ -294,7 +334,7 @@ function getNestedIds(layout) {
     return ids;
 }
 
-function getLoadingState(layout, requestQueue) {
+export function getLoadingState(layout, requestQueue) {
     const ids = isLoadingComponent(layout)
         ? getNestedIds(layout)
         : layout && layout.props.id
@@ -326,25 +366,4 @@ function getLoadingState(layout, requestQueue) {
     };
 }
 
-export const AugmentedTreeContainer = connect(
-    state => ({
-        dependencies: state.dependenciesRequest.content,
-        requestQueue: state.requestQueue,
-        config: state.config,
-    }),
-    dispatch => ({dispatch}),
-    (stateProps, dispatchProps, ownProps) => ({
-        _dashprivate_dependencies: stateProps.dependencies,
-        _dashprivate_dispatch: dispatchProps.dispatch,
-        _dashprivate_layout: ownProps._dashprivate_layout,
-        _dashprivate_path: ownProps._dashprivate_path,
-        _dashprivate_loadingState: getLoadingState(
-            ownProps._dashprivate_layout,
-            stateProps.requestQueue
-        ),
-        _dashprivate_requestQueue: stateProps.requestQueue,
-        _dashprivate_config: stateProps.config,
-    })
-)(TreeContainer);
-
-export default AugmentedTreeContainer;
+export default TreeContainer;
