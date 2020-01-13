@@ -65,17 +65,21 @@ const createContainer = (
         _dashprivate_layout
     ) : (
         <TreeContainer
-                key={_dashprivate_layout && _dashprivate_layout.props && _dashprivate_layout.props.id}
-                _dashprivate_layout={_dashprivate_layout}
-                _dashprivate_path={_dashprivate_path}
-                _dashprivate_dependencies={_dashprivate_dependencies}
-                _dashprivate_dispatch={_dashprivate_dispatch}
-                _dashprivate_loadingState={getLoadingState(
-                    _dashprivate_layout,
-                    _dashprivate_requestQueue
-                )}
-                _dashprivate_requestQueue={_dashprivate_requestQueue}
-                _dashprivate_config={_dashprivate_config}
+            key={
+                _dashprivate_layout &&
+                _dashprivate_layout.props &&
+                _dashprivate_layout.props.id
+            }
+            _dashprivate_layout={_dashprivate_layout}
+            _dashprivate_path={_dashprivate_path}
+            _dashprivate_dependencies={_dashprivate_dependencies}
+            _dashprivate_dispatch={_dashprivate_dispatch}
+            _dashprivate_loadingState={getLoadingState(
+                _dashprivate_layout,
+                _dashprivate_requestQueue
+            )}
+            _dashprivate_requestQueue={_dashprivate_requestQueue}
+            _dashprivate_config={_dashprivate_config}
         />
     );
 
@@ -185,16 +189,16 @@ class TreeContainer extends Component {
                           _dashprivate_requestQueue,
                           _dashprivate_config
                       ),
-                _dashprivate_layout
+                  _dashprivate_layout
               )
             : createContainer(
-                _dashprivate_layout,
-                concat(_dashprivate_path, ['props', 'children']),
-                _dashprivate_dependencies,
-                _dashprivate_dispatch,
-                _dashprivate_requestQueue,
-                _dashprivate_config
-            );
+                  _dashprivate_layout,
+                  concat(_dashprivate_path, ['props', 'children']),
+                  _dashprivate_dependencies,
+                  _dashprivate_dispatch,
+                  _dashprivate_requestQueue,
+                  _dashprivate_config
+              );
     }
 
     getComponent(_dashprivate_layout, children, loading_state, setProps) {
@@ -263,7 +267,7 @@ class TreeContainer extends Component {
             _dashprivate_dependencies,
             _dashprivate_dispatch,
             _dashprivate_requestQueue,
-            _dashprivate_config
+            _dashprivate_config,
         } = this.props;
 
         const layoutProps = this.getLayoutProps();
