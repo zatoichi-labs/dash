@@ -120,20 +120,8 @@ class UnconnectedContainer extends Component {
             return (
                 <div className="_dash-error">Error loading dependencies</div>
             );
-        } else if (
-            appLifecycle === getAppState('HYDRATED') &&
-            config.ui === true
-        ) {
-            return (
-                <GlobalErrorContainer>
-                    <TreeContainer
-                        _dashprivate_layout={layout}
-                        _dashprivate_path={[]}
-                    />
-                </GlobalErrorContainer>
-            );
         } else if (appLifecycle === getAppState('HYDRATED')) {
-            return (
+            const container = (
                 <TreeContainer
                     _dashprivate_layout={layout}
                     _dashprivate_path={[]}
@@ -146,6 +134,12 @@ class UnconnectedContainer extends Component {
                     _dashprivate_requestQueue={requestQueue}
                     _dashprivate_config={config}
                 />
+            );
+
+            return config.ui === true ? (
+                <GlobalErrorContainer>{container}</GlobalErrorContainer>
+            ) : (
+                container
             );
         }
 
@@ -165,7 +159,7 @@ UnconnectedContainer.propTypes = {
     history: PropTypes.any,
     error: PropTypes.object,
     config: PropTypes.object,
-    requestQueue: PropTypes.object,
+    requestQueue: PropTypes.array,
 };
 
 const Container = connect(
