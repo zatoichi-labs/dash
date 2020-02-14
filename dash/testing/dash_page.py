@@ -38,7 +38,7 @@ class DashPageMixin(object):
 
     @property
     def window_store(self):
-        return self.driver.execute_script("return window.store")
+        return self.driver.execute_script("return !!window.store")
 
     def _wait_for_callbacks(self):
         if self.window_store:
