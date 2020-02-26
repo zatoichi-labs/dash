@@ -186,7 +186,7 @@ jobs:
   test-37: &test
     working_directory: ~/dash
     docker:
-      - image: circleci/python:3.7-stretch-node-browsers
+      - image: circleci/python:3.7.5-stretch-node-browsers
         environment:
           PERCY_PARALLEL_TOTAL: -1
           PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: True
@@ -227,7 +227,7 @@ jobs:
   test-36:
       <<: *test
       docker:
-        - image: circleci/python:3.6-stretch-node-browsers
+        - image: circleci/python:3.6.9-stretch-node-browsers
           environment:
             PERCY_ENABLE: 0
             PYVERSION: python36
@@ -235,7 +235,7 @@ jobs:
   test-27:
       <<: *test
       docker:
-        - image: circleci/python:2.7-stretch-node-browsers
+        - image: circleci/python:2.7.16-stretch-node-browsers
           environment:
             PERCY_ENABLE: 0
             PYVERSION: python27
