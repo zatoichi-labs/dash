@@ -52,7 +52,6 @@ def until_not(
     poll=0.1,
     msg="expected condition met within timeout",
 ):  # noqa: C0330
-    res = wait_cond()
     logger.debug(
         "start wait.until_not method, timeout, poll => %s %s %s",
         wait_cond,
@@ -60,11 +59,21 @@ def until_not(
         poll,
     )
     end_time = time.time() + timeout
-    while res:
+    while True:
+        if hasattr(wait_cond, 'false_exceptions'):
+            try:
+                res = wait_cond()
+            except wait_cond.false_exceptions:
+                res = False
+        else:
+            res = wait_cond()
+
+        if not res:
+            break
+
         if time.time() > end_time:
             raise TestingTimeoutError(msg)
         time.sleep(poll)
-        res = wait_cond()
         logger.debug("poll => %s", time.time())
 
     return res
